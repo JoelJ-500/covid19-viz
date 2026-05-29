@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 from flask import Flask, render_template, request
 import plotly.express as px
@@ -5,8 +6,12 @@ import plotly.offline as opy
 
 app = Flask(__name__)
 
-# Load processed data
-df = pd.read_csv("COVID_Cleaned.csv", parse_dates=['date'])
+# Find the absolute path to your app.py folder, then join it with the CSV filename
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+csv_path = os.path.join(BASE_DIR, "COVID_Cleaned.csv")
+
+# Load processed data safely using the absolute path
+df = pd.read_csv(csv_path, parse_dates=["date"])
 
 @app.route('/')
 def index():
