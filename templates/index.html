@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COVID-19 Interactive Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>COVID-19 Insights Dashboard</h1>
+        
+        <div class="summary">
+            <h3>Data Summary</h3>
+            <p><strong>Countries:</strong> {{ summary.countries | join(', ') }}</p>
+            <p><strong>Date Range:</strong> {{ summary.date_range }}</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="country">Country:</label>
+                <select id="country">
+                    {% for country in summary.countries %}
+                    <option value="{{ country }}">{{ country }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="metric">Metric:</label>
+                <select id="metric">
+                    <option value="new_cases">New Cases</option>
+                    <option value="new_deaths">New Deaths</option>
+                    <option value="new_vaccinations">New Vaccinations</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="chart"></div>
+
+        <div class="insights">
+            <h2>Data Insights & Representation</h2>
+            <ul>
+                <li><strong>Trend Analysis:</strong> The chart highlights fluctuations in daily COVID-19 data. Spikes often represent consolidated reporting from weekends or holidays rather than single-day surges.</li>
+                <li><strong>Vaccination Impact:</strong> Comparing case trends with vaccination rollouts can reveal visual correlations, though temporal lags and variants must be considered.</li>
+                <li><strong>Design Choices:</strong> 
+                    <ul>
+                        <li><em>Color Scale:</em> Dark mode is used to reduce eye strain and emphasize data lines.</li>
+                        <li><em>Smoothing:</em> Data preparation included 7-day rolling means to reveal underlying trends amidst noisy daily reports.</li>
+                        <li><em>Uncertainty:</em> Missing values were filled with zero to avoid line breaks, representing the absence of reported data for those periods.</li>
+                    </ul>
+                </li>
+            </ul>
+            <p class="caveat"><strong>Important Note:</strong> Correlation is not causation. Visual trends should not be used for medical or policy conclusions without rigorous statistical modeling.</p>
+        </div>
+    </div>
+
+    <!-- Data passed from Flask -->
+    <script id="graph-data" type="application/json">{{ graph_json | safe }}</script>
+
+    <script>
+        const graphData = JSON.parse(document.getElementById('graph-data').textContent);
+        
+        // Ensure plot is responsive
+        const config = {responsive: true};
+        Plotly.newPlot('chart', graphData.data, graphData.layout, config);
+
+        async function updateChart() {
+            const country = document.getElementById('country').value;
+            const metric = document.getElementById('metric').value;
+
+            const response = await fetch(`/data?country=${encodeURIComponent(country)}&metric=${metric}`);
+            const data = await response.json();
+
+            Plotly.react('chart', [{
+                x: data.x,
+                y: data.y,
+                type: 'scatter',
+                mode: 'lines',
+                name: metric.replace('_', ' '),
+                line: { color: '#bb86fc' }
+            }], {
+                ...graphData.layout,
+                title: data.title,
+                yaxis: { title: { text: metric.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) } }
+            }, config);
+        }
+
+        document.getElementById('country').addEventListener('change', updateChart);
+        document.getElementById('metric').addEventListener('change', updateChart);
+    </script>
+</body>
+</html>
